@@ -2,6 +2,7 @@ import express from 'express';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import pinoHttp from 'pino-http';
+import { config } from './config';
 import { logger } from './logger';
 import { requireApiKey } from './middleware/auth';
 import { errorHandler, notFound } from './middleware/errorHandler';
@@ -23,8 +24,8 @@ export function createApp() {
 
   // Throttle the API surface (defence in depth on top of the API key).
   const apiLimiter = rateLimit({
-    windowMs: 60_000,
-    limit: 120,
+    windowMs: config.RATE_LIMIT_WINDOW_MS,
+    limit: config.RATE_LIMIT_MAX,
     standardHeaders: 'draft-7',
     legacyHeaders: false,
     message: { error: 'rate_limited', message: 'Too many requests, slow down.' },

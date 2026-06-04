@@ -2,6 +2,7 @@ import axios, { AxiosError, AxiosInstance } from 'axios';
 import { config } from '../config';
 import { logger } from '../logger';
 import { buildMekariAuthHeaders } from './mekariSignature';
+import { parseRetryAfterMs, withRetry, type Attempt } from './retry';
 
 /** Shape of a single Qontak "direct" WhatsApp send. */
 export interface QontakDirectSend {
@@ -17,11 +18,18 @@ export interface QontakDirectSend {
   };
 }
 
-export interface QontakResult {
+export interface QontakResult extends Attempt {
   ok: boolean;
   status: number;
   data: unknown;
 }
+
+const retryConfig = {
+  maxAttempts: config.RETRY_MAX_ATTEMPTS,
+  baseDelayMs: config.RETRY_BASE_DELAY_MS,
+  maxDelayMs: config.RETRY_MAX_DELAY_MS,
+  maxElapsedMs: config.RETRY_MAX_ELAPSED_MS,
+};
 
 // We treat any non-2xx as a handled error rather than a thrown exception, so
 // axios should never reject purely because of the HTTP status code.
@@ -40,40 +48,48 @@ const http: AxiosInstance = axios.create({
  */
 export async function sendDirectMessage(payload: QontakDirectSend): Promise<QontakResult> {
   const path = config.QONTAK_BROADCAST_DIRECT_PATH;
-  const authHeaders = buildMekariAuthHeaders({
-    method: 'POST',
-    path,
-    clientId: config.MEKARI_CLIENT_ID,
-    clientSecret: config.MEKARI_CLIENT_SECRET,
-  });
 
-  try {
-    const res = await http.post(path, payload, {
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        ...authHeaders,
-      },
+  // One HTTP attempt. Re-signed each time because the HMAC embeds the current date.
+  const attempt = async (): Promise<QontakResult> => {
+    const authHeaders = buildMekariAuthHeaders({
+      method: 'POST',
+      path,
+      clientId: config.MEKARI_CLIENT_ID,
+      clientSecret: config.MEKARI_CLIENT_SECRET,
     });
 
-    const ok = res.status >= 200 && res.status < 300;
-    if (!ok) {
-      logger.warn(
-        { status: res.status, to: payload.to_number, data: res.data },
-        'Qontak rejected message',
+    try {
+      const res = await http.post(path, payload, {
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders },
+      });
+
+      const ok = res.status >= 200 && res.status < 300;
+      if (!ok) {
+        logger.warn(
+          { status: res.status, to: payload.to_number, data: res.data },
+          'Qontak rejected message',
+        );
+      }
+      return {
+        ok,
+        status: res.status,
+        data: res.data,
+        retryAfterMs: parseRetryAfterMs(res.headers?.['retry-after']),
+      };
+    } catch (err) {
+      const axErr = err as AxiosError;
+      logger.error(
+        { to: payload.to_number, message: axErr.message, code: axErr.code },
+        'Qontak request failed (network/timeout)',
       );
+      return {
+        ok: false,
+        status: 0,
+        data: { error: 'upstream_request_failed', message: axErr.message },
+      };
     }
-    return { ok, status: res.status, data: res.data };
-  } catch (err) {
-    const axErr = err as AxiosError;
-    logger.error(
-      { to: payload.to_number, message: axErr.message, code: axErr.code },
-      'Qontak request failed (network/timeout)',
-    );
-    return {
-      ok: false,
-      status: 0,
-      data: { error: 'upstream_request_failed', message: axErr.message },
-    };
-  }
+  };
+
+  const result = await withRetry(attempt, retryConfig);
+  return { ok: result.ok, status: result.status, data: result.data };
 }

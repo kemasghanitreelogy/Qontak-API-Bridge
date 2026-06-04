@@ -50,6 +50,13 @@ describe('sendDirectMessage', () => {
     expect(res.data).toMatchObject({ error: 'upstream_request_failed' });
   });
 
+  it('returns 429 and reads the Retry-After header', async () => {
+    post.mockResolvedValue({ status: 429, data: { message: 'slow down' }, headers: { 'retry-after': '2' } });
+    const res = await sendDirectMessage(payload);
+    expect(res.ok).toBe(false);
+    expect(res.status).toBe(429);
+  });
+
   it('signs each request with Mekari auth headers', async () => {
     post.mockResolvedValue({ status: 201, data: {} });
     await sendDirectMessage(payload);

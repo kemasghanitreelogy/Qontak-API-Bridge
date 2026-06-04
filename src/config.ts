@@ -27,6 +27,18 @@ const envSchema = z.object({
 
   BROADCAST_CONCURRENCY: z.coerce.number().int().positive().max(50).default(3),
   BROADCAST_DELAY_MS: z.coerce.number().int().min(0).default(250),
+
+  // Retry (exponential backoff + full jitter) for transient Qontak/WhatsApp failures.
+  RETRY_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(10).default(5),
+  RETRY_BASE_DELAY_MS: z.coerce.number().int().min(0).default(500),
+  RETRY_MAX_DELAY_MS: z.coerce.number().int().min(0).default(8000),
+  // Total per-request budget. Keep under Klaviyo's webhook timeout (~10s).
+  RETRY_MAX_ELAPSED_MS: z.coerce.number().int().min(0).default(9000),
+
+  // Abuse protection on the API surface (per function instance). High by default
+  // because the real caller is trusted (authenticated via X-Api-Key).
+  RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(600),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().int().min(1000).default(60000),
 });
 
 const parsed = envSchema.safeParse(process.env);

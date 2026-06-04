@@ -15,3 +15,5 @@ process.env.QONTAK_MESSAGE_TEMPLATE_ID = '';
 process.env.QONTAK_LANGUAGE_CODE = 'id';
 process.env.BROADCAST_CONCURRENCY = '3';
 process.env.BROADCAST_DELAY_MS = '0';
+// Disable real retries/sleeps in tests; retry logic is covered directly in retry.test.ts.
+process.env.RETRY_MAX_ATTEMPTS = '1';
