@@ -35,13 +35,26 @@ describe('sendSingle', () => {
     expect(payload).not.toHaveProperty('parameters');
   });
 
-  it('forwards template parameters when provided', async () => {
+  it('forwards template parameters and sanitises the body value', async () => {
     sendDirectMessage.mockResolvedValue({ ok: true, status: 201, data: {} });
     await sendSingle({
       ...baseSend,
-      parameters: { body: [{ key: '1', value: 'full_name', value_text: 'Budi' }] },
+      parameters: { body: [{ key: '1', value: 'Kemas Ghani', value_text: 'Kemas Ghani' }] },
     } as SendMessageInput);
-    expect(sendDirectMessage.mock.calls[0][0]).toHaveProperty('parameters');
+    const payload = sendDirectMessage.mock.calls[0][0];
+    // raw "Kemas Ghani" -> valid Qontak slug
+    expect(payload.parameters.body[0].value).toBe('kemas_ghani');
+  });
+
+  it('passes through parameters that have no body (e.g. header/buttons only)', async () => {
+    sendDirectMessage.mockResolvedValue({ ok: true, status: 201, data: {} });
+    await sendSingle({
+      ...baseSend,
+      parameters: { buttons: [{ index: '0', type: 'url', value: 'track123' }] },
+    } as unknown as SendMessageInput);
+    const payload = sendDirectMessage.mock.calls[0][0];
+    expect(payload.parameters).toHaveProperty('buttons');
+    expect(payload.parameters.body).toBeUndefined();
   });
 
   it('reports failure when Qontak rejects', async () => {

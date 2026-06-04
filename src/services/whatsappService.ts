@@ -2,9 +2,24 @@ import pLimit from 'p-limit';
 import { config } from '../config';
 import { logger } from '../logger';
 import { sendDirectMessage, QontakDirectSend } from '../qontak/qontakClient';
+import { sanitizeQontakValue } from '../qontak/sanitizeValue';
 import type { BroadcastInput, SendMessageInput } from '../schemas/whatsapp';
 
+type Parameters = NonNullable<SendMessageInput['parameters']>;
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Qontak renders the body parameter's `value` (a slug), so we sanitise it from
+ * whatever the caller sent (e.g. a raw name) into a valid value.
+ */
+function normalizeParameters(parameters: Parameters): Parameters {
+  if (!parameters.body) return parameters;
+  return {
+    ...parameters,
+    body: parameters.body.map((p) => ({ ...p, value: sanitizeQontakValue(p.value) })),
+  };
+}
 
 /** Maps validated input onto the exact payload Qontak expects. */
 function toQontakPayload(args: {
@@ -21,7 +36,7 @@ function toQontakPayload(args: {
     message_template_id: args.message_template_id,
     channel_integration_id: args.channel_integration_id,
     language: { code: args.language_code },
-    ...(args.parameters ? { parameters: args.parameters } : {}),
+    ...(args.parameters ? { parameters: normalizeParameters(args.parameters) } : {}),
   };
 }
 
