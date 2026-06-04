@@ -28,8 +28,8 @@ const templateParameters = z
 
 /** Fields shared by single-send and broadcast. */
 const baseSendFields = {
-  message_template_id: z.string().min(1).default(config.QONTAK_MESSAGE_TEMPLATE_ID ?? ''),
-  channel_integration_id: z.string().min(1).default(config.QONTAK_CHANNEL_INTEGRATION_ID ?? ''),
+  message_template_id: z.string().default(config.QONTAK_MESSAGE_TEMPLATE_ID),
+  channel_integration_id: z.string().default(config.QONTAK_CHANNEL_INTEGRATION_ID),
   language_code: z.string().min(2).default(config.QONTAK_LANGUAGE_CODE),
   parameters: templateParameters,
 };

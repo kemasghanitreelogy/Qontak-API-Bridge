@@ -23,11 +23,14 @@ export interface QontakResult {
   data: unknown;
 }
 
+// We treat any non-2xx as a handled error rather than a thrown exception, so
+// axios should never reject purely because of the HTTP status code.
+export const acceptAllStatuses = (): boolean => true;
+
 const http: AxiosInstance = axios.create({
   baseURL: config.QONTAK_BASE_URL,
   timeout: 20_000,
-  // We treat any non-2xx as a handled error rather than a thrown exception.
-  validateStatus: () => true,
+  validateStatus: acceptAllStatuses,
 });
 
 /**

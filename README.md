@@ -143,7 +143,20 @@ curl -X POST http://localhost:3000/api/whatsapp/send \
 | `npm run build` | Compile TypeScript → `dist/` |
 | `npm start` | Run compiled server |
 | `npm run typecheck` | Type-check only |
-| `npm test` | Run unit tests (Vitest) |
+| `npm run templates` | List your Qontak WhatsApp templates + their IDs |
+| `npm test` | Run the test suite (Vitest) |
+| `npm run test:coverage` | Run tests with a coverage report (100% gated) |
+
+### Testing
+
+48 tests, **100% coverage** (statements / branches / functions / lines) on all
+application code. The suite covers unit logic (HMAC signing, schemas, services,
+middleware) and full **end-to-end** flows through the Express app via `supertest`,
+with only the outbound Qontak HTTP call mocked — so no real messages are sent.
+
+```
+ All files          |     100 |      100 |     100 |     100 |
+```
 
 ---
 

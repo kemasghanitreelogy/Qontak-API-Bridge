@@ -24,8 +24,8 @@ const envSchema = z.object({
     .startsWith('/')
     .default('/qontak/chat/v1/templates/whatsapp'),
 
-  QONTAK_CHANNEL_INTEGRATION_ID: z.string().optional(),
-  QONTAK_MESSAGE_TEMPLATE_ID: z.string().optional(),
+  QONTAK_CHANNEL_INTEGRATION_ID: z.string().default(''),
+  QONTAK_MESSAGE_TEMPLATE_ID: z.string().default(''),
   QONTAK_LANGUAGE_CODE: z.string().default('id'),
 
   BROADCAST_CONCURRENCY: z.coerce.number().int().positive().max(50).default(3),
