@@ -1,8 +1,11 @@
 import pino from 'pino';
-import { config } from './config';
+
+// NODE_ENV is injected by the platform (Vercel sets it to "production"); it is
+// not part of the validated app config, so read it directly here.
+const nodeEnv = process.env.NODE_ENV ?? 'production';
 
 export const logger = pino({
-  level: config.NODE_ENV === 'production' ? 'info' : 'debug',
+  level: nodeEnv === 'production' ? 'info' : 'debug',
   // Never leak credentials into logs.
   redact: {
     paths: [
@@ -15,7 +18,7 @@ export const logger = pino({
     remove: true,
   },
   transport:
-    config.NODE_ENV === 'development'
+    nodeEnv === 'development'
       ? { target: 'pino-pretty', options: { colorize: true, translateTime: 'SYS:standard' } }
       : undefined,
 });

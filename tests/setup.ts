@@ -4,7 +4,6 @@
  * so these win over any local `.env`, keeping tests reproducible in CI.
  */
 process.env.NODE_ENV = 'test';
-process.env.PORT = '3000';
 process.env.BRIDGE_API_KEY = 'test-bridge-key-1234567890';
 process.env.MEKARI_CLIENT_ID = 'test-client-id';
 process.env.MEKARI_CLIENT_SECRET = 'test-client-secret';

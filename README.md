@@ -160,26 +160,61 @@ with only the outbound Qontak HTTP call mocked — so no real messages are sent.
 
 ---
 
-## 5. Project structure
+## 5. Deploy to Vercel (serverless)
+
+The Express app is exported as a serverless function from
+[`api/index.ts`](api/index.ts); [`vercel.json`](vercel.json) rewrites every path
+to it. There is **no PORT and no `app.listen`** in production — Vercel invokes the
+handler per request (`src/index.ts` is only the local dev server).
+
+```bash
+npm i -g vercel        # if you don't have the CLI
+vercel link            # link the repo to a Vercel project
+
+# Add the secrets to Vercel (Production + Preview). Repeat per variable:
+vercel env add BRIDGE_API_KEY
+vercel env add MEKARI_CLIENT_ID
+vercel env add MEKARI_CLIENT_SECRET
+vercel env add QONTAK_CHANNEL_INTEGRATION_ID
+# optional: QONTAK_MESSAGE_TEMPLATE_ID, QONTAK_BASE_URL, QONTAK_BROADCAST_DIRECT_PATH,
+#           QONTAK_LANGUAGE_CODE, BROADCAST_CONCURRENCY, BROADCAST_DELAY_MS
+
+vercel deploy --prod   # or just `git push` if the project is connected to Git
+```
+
+After deploy your endpoints live at `https://<project>.vercel.app/api/whatsapp/send`
+and `/api/whatsapp/broadcast` (send `X-Api-Key`).
+
+**Serverless caveats**
+- `maxDuration` is set to **300s** for big broadcasts. For thousands of numbers,
+  move to a queue (see §6) rather than one long request.
+- Rate limiting is **per function instance** (in-memory). For a hard global limit,
+  back `express-rate-limit` with Redis.
+- `NODE_ENV` is set to `production` by Vercel automatically.
+
+## 6. Project structure
 
 ```
+api/
+  index.ts                  # Vercel serverless entry (exports the Express app)
+vercel.json                 # rewrites all paths -> the function, maxDuration
 src/
-  config.ts                 # env loading + validation (fails fast)
+  config.ts                 # env loading + validation (throws on invalid)
   logger.ts                 # pino logger, redacts secrets
-  app.ts                    # express app (helmet, rate limit, routes)
-  index.ts                  # server bootstrap + graceful shutdown
+  app.ts                    # express app (trust proxy, helmet, rate limit, routes)
+  index.ts                  # LOCAL dev server only (app.listen)
   qontak/
     mekariSignature.ts      # HMAC-SHA256 signing (tested)
     qontakClient.ts         # signed axios call to Qontak
+  scripts/listTemplates.ts  # `npm run templates`
   schemas/whatsapp.ts       # zod request validation
   services/whatsappService.ts # single send + rate-limited broadcast
   middleware/               # auth, validate, error handling
   routes/whatsapp.ts        # /api/whatsapp/send + /broadcast
-tests/
-  mekariSignature.test.ts
+tests/                      # 48 tests, 100% coverage
 ```
 
-## 6. Notes & next steps
+## 7. Notes & next steps
 - Numbers must be international format without `+` (e.g. `6281234567890`).
   The validator strips spaces/dashes and a leading `+` automatically.
 - For very large broadcasts, run this behind a queue (BullMQ/Redis) and return a

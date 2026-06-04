@@ -2,6 +2,9 @@ node_modules/
 dist/
 *.log
 
+# Vercel
+.vercel/
+
 # Secrets — never commit real credentials
 .env
 .env.local

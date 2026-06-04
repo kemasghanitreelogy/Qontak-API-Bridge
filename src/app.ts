@@ -10,6 +10,9 @@ import { whatsappRouter } from './routes/whatsapp';
 export function createApp() {
   const app = express();
 
+  // Behind Vercel's proxy: trust the first proxy hop so req.ip / rate limiting
+  // use the real client IP from X-Forwarded-For.
+  app.set('trust proxy', 1);
   app.disable('x-powered-by');
   app.use(helmet());
   app.use(express.json({ limit: '1mb' }));

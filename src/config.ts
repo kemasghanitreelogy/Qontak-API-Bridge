@@ -6,9 +6,6 @@ import { z } from 'zod';
  * secret is missing — fail fast instead of sending broken requests to Qontak.
  */
 const envSchema = z.object({
-  PORT: z.coerce.number().int().positive().default(3000),
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-
   BRIDGE_API_KEY: z.string().min(16, 'BRIDGE_API_KEY must be at least 16 chars'),
 
   MEKARI_CLIENT_ID: z.string().min(1, 'MEKARI_CLIENT_ID is required'),
@@ -38,9 +35,9 @@ if (!parsed.success) {
   const issues = parsed.error.issues
     .map((i) => `  - ${i.path.join('.')}: ${i.message}`)
     .join('\n');
-  // eslint-disable-next-line no-console
-  console.error(`\n❌ Invalid environment configuration:\n${issues}\n`);
-  process.exit(1);
+  // Throw (don't process.exit) so it surfaces cleanly as a serverless
+  // function error instead of killing the runtime process.
+  throw new Error(`Invalid environment configuration:\n${issues}`);
 }
 
 export const config = parsed.data;
